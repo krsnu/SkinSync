@@ -9,4 +9,4 @@ import os
 data = []
 labels = []
 
-base_path = ''
+base_path = 'Skin Dataset\Oily_Dry\Oily-Dry-Skin-Types'
