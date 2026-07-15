@@ -26,13 +26,13 @@ model.classifier = nn.Sequential(
 model = model.to(device)
 
 for param in model.features.parameters():
-    param.requires_grad = True
+    param.requires_grad = False
 
 train_transform = transforms.Compose([
     transforms.Resize((224, 224)),
-    transforms.RandomHorizontalFlip(p=0.5),
-    transforms.RandomRotation(10),
-    transforms.ColorJitter(brightness = 0.2, contrast = 0.2, saturation = 0.1),
+    # transforms.RandomHorizontalFlip(p=0.5),
+    # transforms.RandomRotation(10),
+    # transforms.ColorJitter(brightness = 0.2, contrast = 0.2, saturation = 0.1),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406],
                          [0.229, 0.224, 0.225])
@@ -64,12 +64,12 @@ valid_loader = DataLoader(valid_ds, batch_size = 32, shuffle = False, num_worker
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(
     model.parameters(),
-    lr = 5e-4,
-    weight_decay=1e-4,
+    lr = 1e-3,
+    weight_decay=0.03,
 )
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
-epochs = 20
+epochs = 10
 best_val_acc = 0.0
 best_model_path = 'best_skin_type_model.pth'
 
