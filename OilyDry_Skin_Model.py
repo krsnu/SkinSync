@@ -4,7 +4,7 @@ from torch import device
 import pandas as pd
 import torchvision
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 import torch.nn as nn
 from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 import matplotlib.pyplot as plt
@@ -12,15 +12,24 @@ from time import time
 import cv2
 import splitfolders
 import os
+from collections import Counter
+
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
 model = mobilenet_v2(weights = MobileNet_V2_Weights.DEFAULT)
+
+for param in model.parameters():
+    param.requires_grad = False 
+for i in range(10, 19):
+    for param in model.features[i].parameters():
+        param.requires_grad = True
+
 num_features = model.classifier[1].in_features
 model.classifier = nn.Sequential(
-    nn.Dropout(0.3),
+    nn.Dropout(0.4),
     nn.Linear(num_features, 3)
 )
 model = model.to(device)
@@ -59,19 +68,33 @@ print('Number of training samples:', len(train_ds))
 print('Number of validation samples:', len(val_ds))
 print('Number of test samples:', len(test_ds))
 
-train_loader = DataLoader(train_ds, batch_size = 32, shuffle=True, num_workers=0, pin_memory=True)
-test_loader = DataLoader(test_ds, batch_size = 32, shuffle=False, num_workers=0, pin_memory=True)
-val_loader = DataLoader(val_ds, batch_size = 32, shuffle = False, num_workers=0, pin_memory=True)
+print("Samples per class in training:", Counter(train_ds.targets))
+
+targets = np.array(train_ds.targets)
+class_sample_count = np.array([len(np.where(targets == t)[0]) for t in np.unique(targets)])
+weight = 1. / class_sample_count
+print(f"Calculated class weights: {weight}")
+
+samples_weight = np.array([weight[t] for t in targets])
+samples_weight = torch.from_numpy(samples_weight).float()
+sampler = WeightedRandomSampler(weights=samples_weight, num_samples=len(samples_weight), replacement=True)
+
+train_loader = DataLoader(train_ds, batch_size=32, sampler=sampler, shuffle=False, num_workers=0, pin_memory=True)
+val_loader = DataLoader(val_ds, batch_size=32, shuffle=False, num_workers=0, pin_memory=True)
+test_loader = DataLoader(test_ds, batch_size=32, shuffle=False, num_workers=0, pin_memory=True)
+
+backbone_params = []
+for i in range(10, 19):
+    backbone_params.extend(list(model.features[i].parameters()))
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(
-    model.parameters(),
-    lr = 1e-3,
-    weight_decay=0.03,
-)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+optimizer = torch.optim.Adam([
+    {'params': backbone_params, 'lr': 1e-5},       # Fix: Now optimizing ALL active blocks
+    {'params': model.classifier.parameters(), 'lr': 3e-4} 
+], weight_decay=1e-4)
 
-epochs = 10
+epochs = 40
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
 best_val_acc = 0.0
 best_model_path = 'best_skin_type_model.pth'
 
@@ -163,4 +186,4 @@ def predict_image(img_path, model, transform, class_names):
     with torch.no_grad():
         outputs = model(img_t)
         _, preds = torch.max(outputs, 1)
-        return class_names[preds.item()]
+        return class_names[preds.item()] 
