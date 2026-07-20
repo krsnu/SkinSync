@@ -10,8 +10,8 @@ from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 import matplotlib.pyplot as plt
 from time import time
 import cv2
+import splitfolders
 import os
-
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -25,14 +25,11 @@ model.classifier = nn.Sequential(
 )
 model = model.to(device)
 
-for param in model.features.parameters():
-    param.requires_grad = False
-
 train_transform = transforms.Compose([
     transforms.Resize((224, 224)),
-    # transforms.RandomHorizontalFlip(p=0.5),
-    # transforms.RandomRotation(10),
-    # transforms.ColorJitter(brightness = 0.2, contrast = 0.2, saturation = 0.1),
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.RandomRotation(10),
+    transforms.ColorJitter(brightness = 0.2, contrast = 0.2, saturation = 0.1),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406],
                          [0.229, 0.224, 0.225])
@@ -45,21 +42,26 @@ test_transform = transforms.Compose([
                          [0.229, 0.224, 0.225])
 ])
 
-train_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\Skin Dataset\Oily_Dry\Oily-Dry-Skin-Types\train', transform=train_transform)
-test_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\Skin Dataset\Oily_Dry\Oily-Dry-Skin-Types\test', transform = test_transform)
-valid_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\Skin Dataset\Oily_Dry\Oily-Dry-Skin-Types\valid', transform= test_transform)
+input_folder = r'C:\asasd\SkinSync\OilyDrySkin_PreSplit'
+output_folder = r'C:\asasd\SkinSync\OilyDrySkin_PostSplit'
+
+splitfolders.ratio(input=input_folder, output=output_folder, seed=42, ratio=(.8, .1, .1), group_prefix=None, move=False)
+
+train_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\OilyDrySkin_PostSplit\train', transform=train_transform)
+test_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\OilyDrySkin_PostSplit\test', transform = test_transform)
+val_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\OilyDrySkin_PostSplit\val', transform = test_transform)
 
 class_names = train_ds.classes
 
 print('Classes:', train_ds.classes)
 print('Class mapping:', train_ds.class_to_idx)
 print('Number of training samples:', len(train_ds))
-print('Number of validation samples:', len(valid_ds))
+print('Number of validation samples:', len(val_ds))
 print('Number of test samples:', len(test_ds))
 
 train_loader = DataLoader(train_ds, batch_size = 32, shuffle=True, num_workers=0, pin_memory=True)
 test_loader = DataLoader(test_ds, batch_size = 32, shuffle=False, num_workers=0, pin_memory=True)
-valid_loader = DataLoader(valid_ds, batch_size = 32, shuffle = False, num_workers=0, pin_memory=True)
+val_loader = DataLoader(val_ds, batch_size = 32, shuffle = False, num_workers=0, pin_memory=True)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(
@@ -103,7 +105,7 @@ for epoch in range(epochs):
     val_loss_sum = 0.0
 
     with torch.no_grad():
-        for images, labels in valid_loader:
+        for images, labels in val_loader:
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             loss = criterion(outputs, labels)
@@ -113,7 +115,7 @@ for epoch in range(epochs):
             val_total += labels.size(0)
             val_correct += (preds == labels).sum().item()
 
-    val_loss = val_loss_sum / len(valid_loader)
+    val_loss = val_loss_sum / len(val_loader)
     val_acc = val_correct / val_total
     epoch_time = time() - start_time
 
