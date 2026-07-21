@@ -185,5 +185,30 @@ def predict_image(img_path, model, transform, class_names):
 
     with torch.no_grad():
         outputs = model(img_t)
+        probabilities = torch.softmax(outputs, dim=1)
+        conf, preds = torch.max(probabilities, 1)
+        
+        predicted_class = class_names[preds.item()]
+        confidence_pct = conf.item() * 100
+        
+        return predicted_class, confidence_pct 
+    
+
+from sklearn.metrics import classification_report, confusion_matrix
+
+all_preds = []
+all_labels = []
+
+model.eval()
+with torch.no_grad():
+    for images, labels in test_loader:
+        images = images.to(device)
+        outputs = model(images)
         _, preds = torch.max(outputs, 1)
-        return class_names[preds.item()] 
+        
+        all_preds.extend(preds.cpu().numpy())
+        all_labels.extend(labels.numpy())
+
+print("\n--- Test Set Evaluation ---")
+print(confusion_matrix(all_labels, all_preds))
+print(classification_report(all_labels, all_preds, target_names=class_names))
