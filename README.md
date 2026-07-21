@@ -1,6 +1,6 @@
 # SkinSync
 SkinSync is an AI-powered classification system designed to analyze skin conditions and offer personalizated skincare recommendations. Powered by Google’s MobileNetV2 architecture, the system leverages transfer learning and deep convolutional neural networks (CNNs) to perform accurate, real-time image classification.
-## Currently Diagnosable Medical Issues:
+## Currently Supported Analyses:
 - Acne
 - Skin type (oily/dry/normal)
 - More hopefully soon
