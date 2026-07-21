@@ -51,14 +51,14 @@ test_transform = transforms.Compose([
                          [0.229, 0.224, 0.225])
 ])
 
-input_folder = r'C:\asasd\SkinSync\OilyDrySkin_PreSplit'
+# input_folder = r'C:\asasd\SkinSync\OilyDrySkin_PreSplit'
 output_folder = r'C:\asasd\SkinSync\OilyDrySkin_PostSplit'
 
-splitfolders.ratio(input=input_folder, output=output_folder, seed=42, ratio=(.8, .1, .1), group_prefix=None, move=False)
+# splitfolders.ratio(input=input_folder, output=output_folder, seed=42, ratio=(.8, .1, .1), group_prefix=None, move=False)
 
-train_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\OilyDrySkin_PostSplit\train', transform=train_transform)
-test_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\OilyDrySkin_PostSplit\test', transform = test_transform)
-val_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\OilyDrySkin_PostSplit\val', transform = test_transform)
+train_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\Data\OilyDrySkin_PostSplit\train', transform=train_transform)
+test_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\Data\OilyDrySkin_PostSplit\test', transform = test_transform)
+val_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\Data\OilyDrySkin_PostSplit\val', transform = test_transform)
 
 class_names = train_ds.classes
 
