@@ -10,5 +10,5 @@ SkinSync is an AI-powered classification system designed to analyze skin conditi
 # Disclaimer
 **SkinSync is an educational demonstration project and is not a certified medical device.** This tool does not provide medical advice, diagnosis, or treatment. Always consult a board-certified dermatologist or licensed healthcare professional for medical concerns or before starting a new skincare regimen.
 
-Dataset(s) Used:
+# Dataset(s) Used:
 - https://www.kaggle.com/datasets/sd20co001/image-dataset-for-skindiseases-dry-oily-normalskin
