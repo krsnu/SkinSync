@@ -7,3 +7,6 @@ We will use multiple models to detect each type of blemish.
 # Collaborators
 - Krishanu Tandle
 - Shrihan Danam
+
+**DISCLAIMER**
+THIS IS NOT A VALID MEDICAL TOOL. IT IS JUST A MODEL DEMONSTRATION. ALWAYS CONSULT A MEDICAL PROFESSIONAL BEFORE PURCHASING ANY OF THE MODEL'S RECOMMENDED PRODUCTS.
