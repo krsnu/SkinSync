@@ -24,5 +24,4 @@ SkinSync is an AI-powered classification system designed to analyze skin conditi
   publisher = { Roboflow },
   year = { 2025 },
   month = { dec },
-  note = { visited on 2026-07-22 },
-- }
+  note = { visited on 2026-07-22 },}
