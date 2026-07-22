@@ -13,6 +13,13 @@ SkinSync is an AI-powered classification system designed to analyze skin conditi
 ## Acknowledgements & Citations
 ### Dataset
 - **Image Dataset for Wrinkles/Fine Lines**: Available on [RoboFlow](https://universe.roboflow.com/kashish-xvjxv/wrinkles-erdfg).
+
+### Model Architecture
+-Backbone: This project utilizes the RF-DETR (Real-Time Detection Transformer) architecture provided by Roboflow. RF-DETR employs a DINOv2 Vision Transformer (ViT) backbone with multi-scale feature projection and a 
+-Deformable DETR decoder, enabling accurate and efficient object detection. The model is pre-trained on the Microsoft COCO dataset and fine-tuned on the Wrinkles dataset for wrinkle detection.
+
+-Original Paper: Robinson, A., et al. (2025). RF-DETR: Neural Architecture Search for Real-Time Detection Transformers. Roboflow.
+
 ### Citation
 - @misc{ wrinkles-erdfg_dataset,
   title = { wrinkles Dataset },
