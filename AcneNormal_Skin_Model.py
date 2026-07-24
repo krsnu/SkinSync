@@ -53,7 +53,7 @@ for i in range(10, 19):
 num_features = model.classifier[1].in_features
 model.classifier = nn.Sequential(
     nn.Dropout(0.4),
-    nn.Linear(num_features, 2)
+    nn.Linear(num_features, 3)
 )
 model = model.to(device)
 
@@ -74,7 +74,7 @@ test_transform = transforms.Compose([
                          [0.229, 0.224, 0.225])
 ])
 
-# input_folder = r'C:\asasd\SkinSync\Data\OilyDrySkin_PreSplit'
+# input_folder = r'C:\asasd\SkinSync\AcneSkinData_PreSplit'
 # output_folder = r'C:\asasd\SkinSync\Data\AcneSkin_PostSplit'
 
 # splitfolders.ratio(input=input_folder, output=output_folder, seed=42, ratio=(.8, .1, .1), group_prefix=None, move=False)

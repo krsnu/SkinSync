@@ -6,7 +6,7 @@ import torchvision
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, WeightedRandomSampler
 import torch.nn as nn
-from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
+from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 import matplotlib.pyplot as plt
 from time import time
 import cv2
@@ -19,33 +19,31 @@ from collections import Counter
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
 
-model = mobilenet_v2(weights = MobileNet_V2_Weights.DEFAULT)
+model = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
 
 for param in model.parameters():
     param.requires_grad = False 
-for i in range(10, 19):
-    for param in model.features[i].parameters():
-        param.requires_grad = True
+for param in model.features[3:].parameters():
+    param.requires_grad = True
 
 num_features = model.classifier[1].in_features
 model.classifier = nn.Sequential(
-    nn.Dropout(0.4),
+    nn.Dropout(0.3),
     nn.Linear(num_features, 3)
 )
 model = model.to(device)
 
 train_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
+    transforms.Resize((228, 228)),
     transforms.RandomHorizontalFlip(p=0.5),
     transforms.RandomRotation(10),
-    transforms.ColorJitter(brightness = 0.2, contrast = 0.2, saturation = 0.1),
+    transforms.ColorJitter(brightness=0.1, contrast=0.1), # Very mild jitter
     transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406],
-                         [0.229, 0.224, 0.225])
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
 test_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
+    transforms.Resize((228, 228)),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406],
                          [0.229, 0.224, 0.225])
@@ -70,30 +68,50 @@ print('Number of test samples:', len(test_ds))
 
 print("Samples per class in training:", Counter(train_ds.targets))
 
-targets = np.array(train_ds.targets)
-class_sample_count = np.array([len(np.where(targets == t)[0]) for t in np.unique(targets)])
-weight = 1. / class_sample_count
-print(f"Calculated class weights: {weight}")
-
-samples_weight = np.array([weight[t] for t in targets])
-samples_weight = torch.from_numpy(samples_weight).float()
-sampler = WeightedRandomSampler(weights=samples_weight, num_samples=len(samples_weight), replacement=True)
-
-train_loader = DataLoader(train_ds, batch_size=32, sampler=sampler, shuffle=False, num_workers=0, pin_memory=True)
+train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=0, pin_memory=True)
 val_loader = DataLoader(val_ds, batch_size=32, shuffle=False, num_workers=0, pin_memory=True)
 test_loader = DataLoader(test_ds, batch_size=32, shuffle=False, num_workers=0, pin_memory=True)
 
-backbone_params = []
-for i in range(10, 19):
-    backbone_params.extend(list(model.features[i].parameters()))
+class FocalLossWithSmoothing(nn.Module):
+    def __init__(self, alpha=None, gamma=1.5, smoothing=0.1):
+        super(FocalLossWithSmoothing, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.smoothing = smoothing
 
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam([
-    {'params': backbone_params, 'lr': 1e-5},       # Fix: Now optimizing ALL active blocks
-    {'params': model.classifier.parameters(), 'lr': 3e-4} 
-], weight_decay=1e-4)
+    def forward(self, inputs, targets):
+        num_classes = inputs.size(1)
+        
+        with torch.no_grad():
+            smooth_targets = torch.full_like(inputs, self.smoothing / (num_classes - 1))
+            smooth_targets.scatter_(1, targets.unsqueeze(1), 1.0 - self.smoothing)
+        
+        log_preds = nn.functional.log_softmax(inputs, dim=1)
+        ce_loss = -torch.sum(smooth_targets * log_preds, dim=1)
+        
+        pt = torch.exp(-ce_loss)
+        focal_loss = ((1 - pt) ** self.gamma) * ce_loss
+        
+        # Multiply by class weights (alpha) if provided
+        if self.alpha is not None:
+            alpha_weights = self.alpha[targets]
+            focal_loss = focal_loss * alpha_weights
 
-epochs = 40
+        return focal_loss.mean()
+
+targets = train_ds.targets
+class_counts = Counter(targets)
+counts = np.array([class_counts[i] for i in range(len(train_ds.classes))])
+smoothed_weights = 1.0 / (counts ** (1/3))
+smoothed_weights = torch.tensor(smoothed_weights / smoothed_weights.sum(), dtype=torch.float).to(device)
+
+criterion = FocalLossWithSmoothing(alpha=smoothed_weights, gamma=1.5)
+optimizer = torch.optim.AdamW([
+    {'params': model.features[3:].parameters(), 'lr': 3e-5}, 
+    {'params': model.classifier.parameters(), 'lr': 1e-3}
+], weight_decay=1e-2)
+
+epochs = 25
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
 best_val_acc = 0.0
 best_model_path = 'best_skin_type_model.pth'
@@ -185,5 +203,30 @@ def predict_image(img_path, model, transform, class_names):
 
     with torch.no_grad():
         outputs = model(img_t)
+        probabilities = torch.softmax(outputs, dim=1)
+        conf, preds = torch.max(probabilities, 1)
+        
+        predicted_class = class_names[preds.item()]
+        confidence_pct = conf.item() * 100
+        
+        return predicted_class, confidence_pct 
+    
+
+from sklearn.metrics import classification_report, confusion_matrix
+
+all_preds = []
+all_labels = []
+
+model.eval()
+with torch.no_grad():
+    for images, labels in test_loader:
+        images = images.to(device)
+        outputs = model(images)
         _, preds = torch.max(outputs, 1)
-        return class_names[preds.item()] 
+        
+        all_preds.extend(preds.cpu().numpy())
+        all_labels.extend(labels.numpy())
+
+print("\n--- Test Set Evaluation ---")
+print(confusion_matrix(all_labels, all_preds))
+print(classification_report(all_labels, all_preds, target_names=class_names))
