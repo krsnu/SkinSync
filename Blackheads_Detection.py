@@ -11,7 +11,7 @@ from torchvision import datasets, transforms
 from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from sklearn.metrics import classification_report, confusion_matrix
-import splitfolders
+
 
 def predict_image(img_path, model, transform, class_names, device):
     model.eval()
@@ -37,23 +37,6 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
 
-   
-    model = mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
-
-    for param in model.parameters():
-        param.requires_grad = False
-    for i in range(5, 19):
-        for param in model.features[i].parameters():
-            param.requires_grad = True
-
-    num_features = model.classifier[1].in_features
-    model.classifier = nn.Sequential(
-        nn.Dropout(0.4),
-        nn.Linear(num_features, 3)  
-    )
-    model = model.to(device)
-
-
     IMG_SIZE = 224
 
     train_transform = transforms.Compose([
@@ -73,22 +56,37 @@ if __name__ == '__main__':
                              [0.229, 0.224, 0.225])
     ])
 
-    
-    train_ds = datasets.ImageFolder(r'C:\Skin Conditions Dataset\Blackheads_PostSplit\train', transform=train_transform)
-    test_ds = datasets.ImageFolder(r'C:\Skin Conditions Dataset\Blackheads_PostSplit\test', transform=test_transform)
-    val_ds = datasets.ImageFolder(r'C:\Skin Conditions Dataset\Blackheads_PostSplit\val', transform=test_transform)
+    dataset_base_path = r'C:\Skin Conditions Dataset\Wrinkles_PostSplit'
+
+    train_ds = datasets.ImageFolder(os.path.join(dataset_base_path, 'train'), transform=train_transform)
+    test_ds  = datasets.ImageFolder(os.path.join(dataset_base_path, 'test'), transform=test_transform)
+    val_ds   = datasets.ImageFolder(os.path.join(dataset_base_path, 'val'), transform=test_transform)
 
     class_names = train_ds.classes
+    num_classes = len(class_names)
 
-    print('Classes:', train_ds.classes)
+    print('Classes:', class_names)
     print('Class mapping:', train_ds.class_to_idx)
     print('Number of training samples:', len(train_ds))
     print('Number of validation samples:', len(val_ds))
     print('Number of test samples:', len(test_ds))
-
     print("Samples per class in training:", Counter(train_ds.targets))
 
-  
+    model = mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
+
+    for param in model.parameters():
+        param.requires_grad = False
+    for i in range(5, 19):
+        for param in model.features[i].parameters():
+            param.requires_grad = True
+
+    num_features = model.classifier[1].in_features
+    model.classifier = nn.Sequential(
+        nn.Dropout(0.4),
+        nn.Linear(num_features, num_classes) 
+    )
+    model = model.to(device)
+
     targets = np.array(train_ds.targets)
     class_sample_count = np.array([len(np.where(targets == t)[0]) for t in np.unique(targets)])
     weight = 1. / class_sample_count
@@ -98,14 +96,12 @@ if __name__ == '__main__':
     samples_weight = torch.from_numpy(samples_weight).float()
     sampler = WeightedRandomSampler(weights=samples_weight, num_samples=len(samples_weight), replacement=True)
 
-   
     use_pin = torch.cuda.is_available()
 
     train_loader = DataLoader(train_ds, batch_size=64, sampler=sampler, shuffle=False, num_workers=4, pin_memory=use_pin)
-    val_loader = DataLoader(val_ds, batch_size=64, shuffle=False, num_workers=4, pin_memory=use_pin)
-    test_loader = DataLoader(test_ds, batch_size=64, shuffle=False, num_workers=4, pin_memory=use_pin)
+    val_loader   = DataLoader(val_ds, batch_size=64, shuffle=False, num_workers=4, pin_memory=use_pin)
+    test_loader  = DataLoader(test_ds, batch_size=64, shuffle=False, num_workers=4, pin_memory=use_pin)
 
-    
     backbone_params = []
     for i in range(5, 19):
         backbone_params.extend(list(model.features[i].parameters()))
@@ -119,7 +115,7 @@ if __name__ == '__main__':
     epochs = 10
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
     best_val_acc = 0.0
-    best_model_path = 'best_blackhead_detection_model.pth'
+    best_model_path = 'best_wrinkles_detection_model.pth'
 
     for epoch in range(epochs):
         start_time = time()
@@ -179,7 +175,6 @@ if __name__ == '__main__':
 
         scheduler.step()
 
-    
     model.load_state_dict(torch.load(best_model_path, map_location=device))
     model = model.to(device)
 
@@ -214,5 +209,3 @@ if __name__ == '__main__':
     print("\n--- Test Set Evaluation ---")
     print(confusion_matrix(all_labels, all_preds))
     print(classification_report(all_labels, all_preds, target_names=class_names))
-
-
