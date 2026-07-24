@@ -22,16 +22,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-header">✨ SkinSync Diagnostic Portal</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Upload a facial image for instant Skin Type & Condition analysis</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Upload a facial image for instant Skin Type & Condition analysis</div>\nTHIS IS NOT A DIAGNOSIS TOOL. ALWAYS CONSULT A DERMATOLOGIST BEFORE STARTING ANY SKIN TREATMENTS.', unsafe_allow_html=True)
 
 # --- DEVICE ---
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# --- CLASS MAPPINGS (Matching train_ds.class_to_idx) ---
-# Model 1: {'Dry_Skin': 0, 'Normal_Skin': 1, 'Oily_Skin': 2}
+# --- CLASS MAPPINGS ---
 SKIN_TYPE_CLASSES = ['Dry_Skin', 'Normal_Skin', 'Oily_Skin']
-
-# Model 2: {'Acne': 0, 'Normal': 1, 'Other': 2}
 ACNE_CLASSES = ['Acne', 'Normal', 'Other']
 
 # --- TRANSFORMS ---
@@ -82,7 +79,6 @@ with st.spinner("Loading models into memory..."):
 
 # --- UI CONTROLS ---
 show_probs = st.sidebar.checkbox("Show Detailed Probabilities", value=True)
-
 uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
@@ -95,44 +91,48 @@ if uploaded_file is not None:
     if st.button("🚀 Run Diagnostic Analysis", use_container_width=True):
         with st.spinner("Analyzing image..."):
             
-            # --- MODEL 1 INFERENCE ---
+            # 1. SKIN TYPE
             t_skin = skin_type_transform(image).unsqueeze(0).to(device)
             with torch.no_grad():
                 out_skin = skin_model(t_skin)
                 probs_skin = F.softmax(out_skin, dim=1)[0]
                 conf_skin, pred_skin = torch.max(probs_skin, 0)
-                
             skin_label = SKIN_TYPE_CLASSES[pred_skin.item()]
             skin_conf = conf_skin.item() * 100
 
-            # --- MODEL 2 INFERENCE ---
+            # 2. ACNE
             t_acne = acne_transform(image).unsqueeze(0).to(device)
             with torch.no_grad():
                 out_acne = acne_model(t_acne)
                 probs_acne = F.softmax(out_acne, dim=1)[0]
                 conf_acne, pred_acne = torch.max(probs_acne, 0)
-
             acne_label = ACNE_CLASSES[pred_acne.item()]
             acne_conf = conf_acne.item() * 100
 
         # --- RESULTS DISPLAY ---
         st.subheader("📊 Analysis Results")
         
+        CONFIDENCE_THRESHOLD = 50.0
         r_col1, r_col2 = st.columns(2)
 
+        # Skin Type Column
         with r_col1:
-            st.metric(
-                label="Skin Type Prediction",
-                value=skin_label.replace("_", " "),
-                delta=f"{skin_conf:.1f}% Confidence"
-            )
+            if skin_conf < CONFIDENCE_THRESHOLD:
+                st.warning(f"⚠️ **Low Confidence ({skin_conf:.1f}%)**\n\nLighting or texture is ambiguous. Top guess: **{skin_label.replace('_', ' ')}**")
+            else:
+                st.metric(
+                    label="Skin Type",
+                    value=skin_label.replace("_", " "),
+                    delta=f"{skin_conf:.1f}% Confidence"
+                )
             if show_probs:
                 for i, name in enumerate(SKIN_TYPE_CLASSES):
                     st.progress(float(probs_skin[i]), text=f"{name.replace('_', ' ')}: {probs_skin[i]*100:.1f}%")
 
+        # Acne Column
         with r_col2:
             st.metric(
-                label="Condition Prediction",
+                label="Acne Condition",
                 value=acne_label.replace("_", " "),
                 delta=f"{acne_conf:.1f}% Confidence"
             )
