@@ -74,9 +74,9 @@ if __name__ == '__main__':
     ])
 
     
-    train_ds = datasets.ImageFolder(r'C:\Skin Conditions Dataset\Blackheads_PostSplit\train', transform=train_transform)
-    test_ds = datasets.ImageFolder(r'C:\Skin Conditions Dataset\Blackheads_PostSplit\test', transform=test_transform)
-    val_ds = datasets.ImageFolder(r'C:\Skin Conditions Dataset\Blackheads_PostSplit\val', transform=test_transform)
+    train_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\Data\Blackheads_PostSplit\train', transform=train_transform)
+    test_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\Data\Blackheads_PostSplit\test', transform=test_transform)
+    val_ds = datasets.ImageFolder(r'C:\asasd\SkinSync\Data\Blackheads_PostSplit\val', transform=test_transform)
 
     class_names = train_ds.classes
 
