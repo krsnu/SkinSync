@@ -11,7 +11,7 @@ from torchvision import datasets, transforms
 from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from sklearn.metrics import classification_report, confusion_matrix
-
+import splitfolders
 
 def predict_image(img_path, model, transform, class_names, device):
     model.eval()
@@ -214,4 +214,5 @@ if __name__ == '__main__':
     print("\n--- Test Set Evaluation ---")
     print(confusion_matrix(all_labels, all_preds))
     print(classification_report(all_labels, all_preds, target_names=class_names))
+
 

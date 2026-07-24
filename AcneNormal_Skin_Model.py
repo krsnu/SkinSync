@@ -9,35 +9,11 @@ import torch.nn as nn
 from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 from time import time
 import cv2
-import splitfolders
 import os
 from collections import Counter
 
 
-# Splitting images into 80% train, 10% val, 10% test
-splitfolders.ratio(
-    r"C:\Skin Conditions Dataset\blackheades", 
-    output=r"C:\Skin Conditions Dataset\blackheades_PostSplit", 
-    seed=1337, 
-    ratio=(0.8, 0.1, 0.1)
-)
 
-print("Dataset successfully split!")
-
-
-IMG_SIZE = 300
-
-# Updated train transforms for detailed skin features
-train_transform = transforms.Compose([
-    transforms.Resize((IMG_SIZE, IMG_SIZE)),
-    transforms.RandomResizedCrop(IMG_SIZE, scale=(0.8, 1.0)), # Keep scale high to retain detail
-    transforms.RandomHorizontalFlip(p=0.5),
-    transforms.RandomRotation(10),
-    transforms.ColorJitter(brightness=0.1, contrast=0.2), # Slight contrast boost helps features pop
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406],
-                         [0.229, 0.224, 0.225])
-])
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Using device:', device)
