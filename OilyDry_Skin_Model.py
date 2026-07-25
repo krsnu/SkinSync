@@ -83,7 +83,7 @@ class FocalLossWithSmoothing(nn.Module):
         num_classes = inputs.size(1)
         
         with torch.no_grad():
-            smooth_targets = torch.full_like(inputs, self.smoothing / (num_classes - 1))
+            smooth_targets = torch.full_like(inputs, self.smoothing / (num_classes - 1), device=inputs.device)
             smooth_targets.scatter_(1, targets.unsqueeze(1), 1.0 - self.smoothing)
         
         log_preds = nn.functional.log_softmax(inputs, dim=1)
