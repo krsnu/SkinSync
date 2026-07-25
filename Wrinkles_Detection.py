@@ -56,7 +56,7 @@ if __name__ == '__main__':
                              [0.229, 0.224, 0.225])
     ])
 
-    dataset_base_path = r'C:\Skin Conditions Dataset\Wrinkles_PostSplit'
+    dataset_base_path = r'C:\asasd\SkinSync\Data\Wrinkles_PostSplit'
 
     train_ds = datasets.ImageFolder(os.path.join(dataset_base_path, 'train'), transform=train_transform)
     test_ds  = datasets.ImageFolder(os.path.join(dataset_base_path, 'test'), transform=test_transform)
