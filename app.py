@@ -30,7 +30,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 CLASSES = {
     "Skin Type": ['Dry_Skin', 'Normal_Skin', 'Oily_Skin'],
-    "Acne": ['Acne', 'Normal', 'Other'],
+    "Acne": ['Acne', 'Normal/Other'],
     "Wrinkles": ['Normal', 'Other', 'Wrinkles'],
     "Blackheads": ['Blackheads', 'Normal', 'Other']
 }
@@ -59,7 +59,7 @@ def load_all_models():
     models["Skin Type"] = st_model
 
     acne_m = mobilenet_v2()
-    acne_m.classifier[1] = nn.Linear(acne_m.classifier[1].in_features, 3)
+    acne_m.classifier[1] = nn.Linear(acne_m.classifier[1].in_features, 2)
     acne_m.load_state_dict(torch.load('best_acne_detection_model.pth', map_location=device))
     acne_m.eval().to(device)
     models["Acne"] = acne_m
