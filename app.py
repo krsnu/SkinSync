@@ -1,5 +1,3 @@
-import os
-import cv2
 import PIL.Image as Image
 import streamlit as st
 import torch
@@ -8,6 +6,7 @@ import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.models import efficientnet_b0, mobilenet_v2
 
+# Page Setup
 st.set_page_config(
     page_title="SkinSync | Multi-Model AI Diagnostics",
     page_icon="✨",
@@ -85,6 +84,7 @@ with st.spinner("Loading AI diagnostic models into memory..."):
         st.error(f"Error loading model weights: {e}")
         st.stop()
 
+# Sidebar Controls
 st.sidebar.header("⚙️ Portal Settings")
 show_probs = st.sidebar.checkbox("Show Detailed Probabilities", value=True)
 confidence_threshold = st.sidebar.slider("Confidence Warning Threshold (%)", 30, 80, 50)
@@ -126,7 +126,7 @@ if uploaded_file is not None:
         row2_col1, row2_col2 = st.columns(2)
         
         grid = [
-            (row1_col1, "Skin Type\nDisclaimer: You can not reliably guess skin type based on look alone.\nThis model was made to detect extremely oily or dry skin."),
+            (row1_col1, "Skin Type"),
             (row1_col2, "Acne"),
             (row2_col1, "Wrinkles"),
             (row2_col2, "Blackheads")
@@ -135,7 +135,12 @@ if uploaded_file is not None:
         for col, task in grid:
             res = results[task]
             with col:
-                st.markdown(f"### {task}")
+                if task == "Skin Type":
+                    st.markdown("### Skin Type", help="Visual image analysis cannot reliably determine precise skin hydration or sebum production. This model is designed only to flag extreme dry or oily cases.")
+                    st.info("ℹ️ **Notice:** Skin type cannot be fully determined from photos alone. This analysis flags visible signs of extreme oiliness or dryness.", icon="💡")
+                else:
+                    st.markdown(f"### {task}")
+
                 if res["confidence"] < confidence_threshold:
                     st.warning(f"⚠️ **Low Confidence ({res['confidence']:.1f}%)**\n\nPredicted: **{res['label']}**")
                 else:
