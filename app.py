@@ -1,143 +1,156 @@
+import os
+import cv2
+import PIL.Image as Image
 import streamlit as st
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.models import efficientnet_b0, mobilenet_v2
-from PIL import Image
-import torch.nn.functional as F
 
-# --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="SkinSync | AI Diagnostics",
+    page_title="SkinSync | Multi-Model AI Diagnostics",
     page_icon="✨",
-    layout="centered"
+    layout="wide"
 )
 
-# --- STYLING ---
 st.markdown("""
     <style>
-    .main-header { font-size:2.3rem; font-weight:700; text-align:center; color: #333; }
-    .sub-header { font-size:1.0rem; text-align:center; color: #666; margin-bottom:1.5rem; }
+    .main-header { font-size:2.5rem; font-weight:700; text-align:center; color: #1E293B; }
+    .sub-header { font-size:1.0rem; text-align:center; color: #64748B; margin-bottom:1.5rem; }
+    .disclaimer { font-size:0.8rem; text-align:center; color: #94A3B8; margin-bottom:2rem; }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-header">✨ SkinSync Diagnostic Portal</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Upload a facial image for instant Skin Type & Condition analysis</div>\nTHIS IS NOT A DIAGNOSIS TOOL. ALWAYS CONSULT A DERMATOLOGIST BEFORE STARTING ANY SKIN TREATMENTS.', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Multi-Attribute AI Analysis for Skin Type & Clinical Features</div>', unsafe_allow_html=True)
+st.markdown('<div class="disclaimer">⚠️ FOR EDUCATIONAL/DEMONSTRATION PURPOSES ONLY. CONSULT A DERMATOLOGIST FOR CLINICAL DIAGNOSES.</div>', unsafe_allow_html=True)
 
-# --- DEVICE ---
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# --- CLASS MAPPINGS ---
-SKIN_TYPE_CLASSES = ['Dry_Skin', 'Normal_Skin', 'Oily_Skin']
-ACNE_CLASSES = ['Acne', 'Normal', 'Other']
+CLASSES = {
+    "Skin Type": ['Dry_Skin', 'Normal_Skin', 'Oily_Skin'],
+    "Acne": ['Acne', 'Normal', 'Other'],
+    "Wrinkles": ['Normal', 'Other', 'Wrinkles'],
+    "Blackheads": ['Blackheads', 'Normal', 'Other']
+}
 
-# --- TRANSFORMS ---
-skin_type_transform = transforms.Compose([
-    transforms.Resize((228, 228)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
-
-acne_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
-
-# --- MODEL LOADERS ---
-@st.cache_resource
-def load_skin_type_model():
-    model = efficientnet_b0()
-    num_features = model.classifier[1].in_features
-    model.classifier = nn.Sequential(
-        nn.Dropout(0.3),
-        nn.Linear(num_features, 3)
-    )
-    model.load_state_dict(torch.load('best_skin_type_model.pth', map_location=device))
-    model.eval().to(device)
-    return model
+transforms_dict = {
+    "Skin Type": transforms.Compose([
+        transforms.Resize((228, 228)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ]),
+    "Standard": transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+}
 
 @st.cache_resource
-def load_acne_model():
-    model = mobilenet_v2()
-    num_features = model.classifier[1].in_features
-    model.classifier = nn.Sequential(
-        nn.Dropout(0.4),
-        nn.Linear(num_features, 3)
-    )
-    model.load_state_dict(torch.load('best_acne_detection_model.pth', map_location=device))
-    model.eval().to(device)
-    return model
+def load_all_models():
+    models = {}
 
-with st.spinner("Loading models into memory..."):
+    st_model = efficientnet_b0()
+    st_model.classifier[1] = nn.Linear(st_model.classifier[1].in_features, 3)
+    st_model.load_state_dict(torch.load('best_skin_type_model.pth', map_location=device))
+    st_model.eval().to(device)
+    models["Skin Type"] = st_model
+
+    acne_m = mobilenet_v2()
+    acne_m.classifier[1] = nn.Linear(acne_m.classifier[1].in_features, 3)
+    acne_m.load_state_dict(torch.load('best_acne_detection_model.pth', map_location=device))
+    acne_m.eval().to(device)
+    models["Acne"] = acne_m
+
+    wrinkle_m = mobilenet_v2()
+    wrinkle_m.classifier[1] = nn.Linear(wrinkle_m.classifier[1].in_features, 3)
+    wrinkle_m.load_state_dict(torch.load('best_wrinkles_detection_model.pth', map_location=device))
+    wrinkle_m.eval().to(device)
+    models["Wrinkles"] = wrinkle_m
+
+    blackhead_m = mobilenet_v2()
+    blackhead_m.classifier[1] = nn.Linear(blackhead_m.classifier[1].in_features, 3)
+    blackhead_m.load_state_dict(torch.load('best_blackhead_detection_model.pth', map_location=device))
+    blackhead_m.eval().to(device)
+    models["Blackheads"] = blackhead_m
+
+    return models
+
+with st.spinner("Loading AI diagnostic models into memory..."):
     try:
-        skin_model = load_skin_type_model()
-        acne_model = load_acne_model()
+        models = load_all_models()
     except Exception as e:
-        st.error(f"Error loading models: {e}")
+        st.error(f"Error loading model weights: {e}")
         st.stop()
 
-# --- UI CONTROLS ---
+st.sidebar.header("⚙️ Portal Settings")
 show_probs = st.sidebar.checkbox("Show Detailed Probabilities", value=True)
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+confidence_threshold = st.sidebar.slider("Confidence Warning Threshold (%)", 30, 80, 50)
+
+uploaded_file = st.file_uploader("Upload a facial photo...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.image(image, caption="Uploaded Image", use_container_width=True)
+    col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
+    with col_img2:
+        st.image(image, caption="Uploaded Scan", use_container_width=True)
 
-    if st.button("🚀 Run Diagnostic Analysis", use_container_width=True):
-        with st.spinner("Analyzing image..."):
+    if st.button("🚀 Run Full Diagnostic Pipeline", use_container_width=True):
+        with st.spinner("Analyzing multi-model features..."):
             
-            # 1. SKIN TYPE
-            t_skin = skin_type_transform(image).unsqueeze(0).to(device)
-            with torch.no_grad():
-                out_skin = skin_model(t_skin)
-                probs_skin = F.softmax(out_skin, dim=1)[0]
-                conf_skin, pred_skin = torch.max(probs_skin, 0)
-            skin_label = SKIN_TYPE_CLASSES[pred_skin.item()]
-            skin_conf = conf_skin.item() * 100
+            results = {}
+            for task_name, model in models.items():
+                transform = transforms_dict["Skin Type"] if task_name == "Skin Type" else transforms_dict["Standard"]
+                img_t = transform(image).unsqueeze(0).to(device)
+                
+                with torch.no_grad():
+                    outputs = model(img_t)
+                    probs = F.softmax(outputs, dim=1)[0]
+                    conf, pred = torch.max(probs, 0)
+                
+                label = CLASSES[task_name][pred.item()]
+                results[task_name] = {
+                    "label": label.replace("_", " "),
+                    "confidence": conf.item() * 100,
+                    "probs": probs,
+                    "classes": CLASSES[task_name]
+                }
 
-            # 2. ACNE
-            t_acne = acne_transform(image).unsqueeze(0).to(device)
-            with torch.no_grad():
-                out_acne = acne_model(t_acne)
-                probs_acne = F.softmax(out_acne, dim=1)[0]
-                conf_acne, pred_acne = torch.max(probs_acne, 0)
-            acne_label = ACNE_CLASSES[pred_acne.item()]
-            acne_conf = conf_acne.item() * 100
-
-        # --- RESULTS DISPLAY ---
-        st.subheader("📊 Analysis Results")
+        st.write("---")
+        st.subheader("📊 Diagnostic Suite Results")
         
-        CONFIDENCE_THRESHOLD = 50.0
-        r_col1, r_col2 = st.columns(2)
+        row1_col1, row1_col2 = st.columns(2)
+        row2_col1, row2_col2 = st.columns(2)
+        
+        grid = [
+            (row1_col1, "Skin Type"),
+            (row1_col2, "Acne"),
+            (row2_col1, "Wrinkles"),
+            (row2_col2, "Blackheads")
+        ]
 
-        # Skin Type Column
-        with r_col1:
-            if skin_conf < CONFIDENCE_THRESHOLD:
-                st.warning(f"⚠️ **Low Confidence ({skin_conf:.1f}%)**\n\nLighting or texture is ambiguous. Top guess: **{skin_label.replace('_', ' ')}**")
-            else:
-                st.metric(
-                    label="Skin Type",
-                    value=skin_label.replace("_", " "),
-                    delta=f"{skin_conf:.1f}% Confidence"
-                )
-            if show_probs:
-                for i, name in enumerate(SKIN_TYPE_CLASSES):
-                    st.progress(float(probs_skin[i]), text=f"{name.replace('_', ' ')}: {probs_skin[i]*100:.1f}%")
+        for col, task in grid:
+            res = results[task]
+            with col:
+                st.markdown(f"### {task}")
+                if res["confidence"] < confidence_threshold:
+                    st.warning(f"⚠️ **Low Confidence ({res['confidence']:.1f}%)**\n\nPredicted: **{res['label']}**")
+                else:
+                    st.metric(
+                        label="Classification",
+                        value=res["label"],
+                        delta=f"{res['confidence']:.1f}% Confidence"
+                    )
+                
+                if show_probs:
+                    for i, name in enumerate(res["classes"]):
+                        st.progress(
+                            float(res["probs"][i]),
+                            text=f"{name.replace('_', ' ')}: {res['probs'][i]*100:.1f}%"
+                        )
+                st.write("")
 
-        # Acne Column
-        with r_col2:
-            st.metric(
-                label="Acne Condition",
-                value=acne_label.replace("_", " "),
-                delta=f"{acne_conf:.1f}% Confidence"
-            )
-            if show_probs:
-                for i, name in enumerate(ACNE_CLASSES):
-                    st.progress(float(probs_acne[i]), text=f"{name.replace('_', ' ')}: {probs_acne[i]*100:.1f}%")
-
-        st.success("Diagnostics Complete!")
+        st.success("✨ Multi-Model Analysis Complete!")

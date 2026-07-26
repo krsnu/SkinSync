@@ -37,7 +37,7 @@ train_transform = transforms.Compose([
     transforms.Resize((228, 228)),
     transforms.RandomHorizontalFlip(p=0.5),
     transforms.RandomRotation(10),
-    transforms.ColorJitter(brightness=0.1, contrast=0.1), # Very mild jitter
+    transforms.ColorJitter(brightness=(0.3, 1.8), contrast=0.4, saturation=0.2),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
