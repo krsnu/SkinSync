@@ -126,7 +126,7 @@ if uploaded_file is not None:
         row2_col1, row2_col2 = st.columns(2)
         
         grid = [
-            (row1_col1, "Skin Type"),
+            (row1_col1, "Skin Type\nDisclaimer: You can not reliably guess skin type based on look alone.\nThis model was made to detect extremely oily or dry skin."),
             (row1_col2, "Acne"),
             (row2_col1, "Wrinkles"),
             (row2_col2, "Blackheads")
