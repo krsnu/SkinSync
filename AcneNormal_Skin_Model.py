@@ -86,7 +86,8 @@ backbone_params = []
 for i in range(10, 19):
     backbone_params.extend(list(model.features[i].parameters()))
 
-criterion = nn.CrossEntropyLoss()
+
+criterion = nn.CrossEntropyLoss(weight = torch.tensor(weight, dtype=torch.float).to(device))
 optimizer = torch.optim.Adam([
     {'params': backbone_params, 'lr': 1e-5},
     {'params': model.classifier.parameters(), 'lr': 3e-4} 
@@ -173,7 +174,7 @@ with torch.no_grad():
 test_acc = test_correct / test_total
 print(f'Test Accuracy: {test_acc:.4f}')
 
-def predict_image(img_path, model, transform, class_names):
+def predict_image(img_path, model, transform, class_names, acne_threshold = 0.3):
     model.eval()
     img = cv2.imread(img_path)
     if img is None:
@@ -184,11 +185,19 @@ def predict_image(img_path, model, transform, class_names):
 
     with torch.no_grad():
         outputs = model(img_t)
-        probabilities = torch.softmax(outputs, dim=1)
-        conf, preds = torch.max(probabilities, 1)
-        
-        predicted_class = class_names[preds.item()]
-        confidence_pct = conf.item() * 100
+        probabilities = torch.softmax(outputs, dim=1)[0]
+
+        acne_idx = class_names.index('Acne') if 'Acne' in class_names else 0
+        acne_prob = probabilities[acne_idx].item()
+
+        if acne_prob >= acne_threshold:
+            predicted_class = class_names[acne_idx]
+            confidence_pct = acne_prob * 100
+        else:
+
+            conf, preds = torch.max(probabilities, 0)
+            predicted_class = class_names[preds.item()]
+            confidence_pct = conf.item() * 100
         
         return predicted_class, confidence_pct 
     
@@ -198,16 +207,26 @@ from sklearn.metrics import classification_report, confusion_matrix
 all_preds = []
 all_labels = []
 
+acne_idx = class_names.index('Acne') if 'Acne' in class_names else 0
+ACNE_THRESHOLD = 0.3
+
 model.eval()
 with torch.no_grad():
     for images, labels in test_loader:
         images = images.to(device)
         outputs = model(images)
-        _, preds = torch.max(outputs, 1)
-        
-        all_preds.extend(preds.cpu().numpy())
-        all_labels.extend(labels.numpy())
+        probabilities = torch.softmax(outputs, dim=1)
+        for i in range(probabilities.size(0)):
+            prob_vec = probabilities[i]
+            acne_prob = prob_vec[acne_idx].item()
+            if acne_prob >= ACNE_THRESHOLD:
+                pred_label = acne_idx
+            else:
+                _, pred_tensor = torch.max(prob_vec, 0)
+                pred_label = pred_tensor.item()
+            all_preds.append(pred_label)
+        all_labels.extend(labels.cpu().numpy())
 
-print("\n--- Test Set Evaluation ---")
+print("\n--- Test Set Evaluation (Threshold = 0.3) ---")
 print(confusion_matrix(all_labels, all_preds))
 print(classification_report(all_labels, all_preds, target_names=class_names))
