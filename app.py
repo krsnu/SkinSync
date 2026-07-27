@@ -83,7 +83,7 @@ def load_recommender_artifacts():
     input_dim = len(encoder.get_feature_names_out())
     output_dim = len(mlb.classes_)
     
-    recommender = SkincareAttentionTransformer(input_dim=input_dim, output_dim=output_dim)
+    recommender = SkinCareAttentionTransformer(input_dim=input_dim, output_dim=output_dim)
     recommender.load_state_dict(torch.load("transformer_recommender.pth", map_location=device))
     recommender.eval().to(device)
     
