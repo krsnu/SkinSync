@@ -9,9 +9,9 @@ import joblib
 from transformer_recommender import SkinCareAttentionTransformer
 
 print("Loading Skincare Treatment Dataset")
-df = pd.read_csv("Skincare_Treatment_Dataset.csv")
+df = pd.read_csv(r"C:\asasd\SkinSync\Skincare Treatment Dataset.csv")
 
-df['Ingredients_List'] = df['Ingrdients'].apply(
+df['Ingredients_List'] = df['Ingredients'].apply(
     lambda x: [ing.strip() for ing in str(x).split('+')]
 )
 feature_cols = ['Age_Group', 'Skin_Type', 'Skin_Subtype', 'Sensitivity', 'Concern', 'Internal_Type']
@@ -35,8 +35,8 @@ loader = DataLoader(SkincareDataset(X_tensor, y_tensor), batch_size=32, shuffle=
 
 input_dim = X_encoded.shape[1]
 output_dim = y_encoded.shape[1]
-print(f" Training Transformer from scratch on {len(df)} samples...")
-model = SkinCareAttentionTransformer(input_dim=input_dim, output_dim=output_dim)
+print(f" Training Transformer on {len(df)} samples...")
+model = SkinCareAttentionTransformer(input_dim, output_dim)
 criterion = nn.BCELoss()
 optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
 model.train()
