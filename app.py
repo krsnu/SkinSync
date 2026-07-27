@@ -187,7 +187,7 @@ if st.session_state.get('scan_complete', False):
     with q2:
         is_sensitive = st.selectbox("Is your skin sensitive?", ["Yes", "No"])
     with q3:
-        budget = st.select_slider("Target Budget Tier:", options=["$", "$$", "$$$"], value=["$", "$$", "$$$"])
+        budget = st.select_slider("Target Budget Tier:", options=["$", "$$", "$$$"], value="$$")
 
     all_ingredients = list(mlb.classes_) if mlb else ["Salicylic Acid", "Niacinamide", "Retinol"]
     allergies = st.multiselect("Select Ingredients to EXCLUDE (Allergies/Sensitivities):", options=all_ingredients)
