@@ -7,7 +7,7 @@ import joblib
 import pandas as pd
 from torchvision import transforms
 from torchvision.models import efficientnet_b0, mobilenet_v2
-from transformer_recommender import SkincareAttentionTransformer
+from transformer_recommender import SkinCareAttentionTransformer
 
 # Page Setup
 st.set_page_config(
