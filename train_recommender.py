@@ -6,7 +6,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import MultiLabelBinarizer, OneHotEncoder
 import joblib
-from transformer_recommender import SkincareAttentionTransformer
+from transformer_recommender import SkinCareAttentionTransformer
 
 print("Loading Skincare Treatment Dataset")
 df = pd.read_csv("Skincare_Treatment_Dataset.csv")
@@ -36,7 +36,7 @@ loader = DataLoader(SkincareDataset(X_tensor, y_tensor), batch_size=32, shuffle=
 input_dim = X_encoded.shape[1]
 output_dim = y_encoded.shape[1]
 print(f" Training Transformer from scratch on {len(df)} samples...")
-model = SkincareAttentionTransformer(input_dim=input_dim, output_dim=output_dim)
+model = SkinCareAttentionTransformer(input_dim=input_dim, output_dim=output_dim)
 criterion = nn.BCELoss()
 optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
 model.train()
