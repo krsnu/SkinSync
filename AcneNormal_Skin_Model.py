@@ -11,6 +11,7 @@ from time import time
 import cv2
 import os
 from collections import Counter
+import splitfolders
 
 
 
@@ -29,28 +30,28 @@ for i in range(10, 19):
 num_features = model.classifier[1].in_features
 model.classifier = nn.Sequential(
     nn.Dropout(0.4),
-    nn.Linear(num_features, 3)
+    nn.Linear(num_features, 2)
 )
 model = model.to(device)
 
 train_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
+    transforms.Resize((228, 228)),
     transforms.RandomHorizontalFlip(p=0.5),
     transforms.RandomRotation(10),
-    transforms.ColorJitter(brightness = 0.2, contrast = 0.2, saturation = 0.1),
+    transforms.ColorJitter(brightness=(0.3, 1.8), contrast=0.4, saturation=0.2),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406],
                          [0.229, 0.224, 0.225])
 ])
 
 test_transform = transforms.Compose([
-    transforms.Resize((224, 224)),
+    transforms.Resize((228, 228)),
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406],
                          [0.229, 0.224, 0.225])
 ])
 
-# input_folder = r'C:\asasd\SkinSync\AcneSkinData_PreSplit'
+# input_folder = r'C:\asasd\SkinSync\Data\AcneSkinData_PreSplit'
 # output_folder = r'C:\asasd\SkinSync\Data\AcneSkin_PostSplit'
 
 # splitfolders.ratio(input=input_folder, output=output_folder, seed=42, ratio=(.8, .1, .1), group_prefix=None, move=False)
@@ -87,7 +88,7 @@ for i in range(10, 19):
     backbone_params.extend(list(model.features[i].parameters()))
 
 
-criterion = nn.CrossEntropyLoss(weight = torch.tensor(weight, dtype=torch.float).to(device))
+criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam([
     {'params': backbone_params, 'lr': 1e-5},
     {'params': model.classifier.parameters(), 'lr': 3e-4} 
@@ -195,9 +196,9 @@ def predict_image(img_path, model, transform, class_names, acne_threshold = 0.3)
             confidence_pct = acne_prob * 100
         else:
 
-            conf, preds = torch.max(probabilities, 0)
-            predicted_class = class_names[preds.item()]
-            confidence_pct = conf.item() * 100
+            other_idx = 1-acne_idx
+            predicted_class = class_names[other_idx]
+            confidence_pct = probabilities[other_idx].item() * 100
         
         return predicted_class, confidence_pct 
     
@@ -222,8 +223,7 @@ with torch.no_grad():
             if acne_prob >= ACNE_THRESHOLD:
                 pred_label = acne_idx
             else:
-                _, pred_tensor = torch.max(prob_vec, 0)
-                pred_label = pred_tensor.item()
+                pred_label = 1 - acne_idx
             all_preds.append(pred_label)
         all_labels.extend(labels.cpu().numpy())
 
