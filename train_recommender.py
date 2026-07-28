@@ -40,6 +40,7 @@ model = SkinCareAttentionTransformer(input_dim, output_dim)
 criterion = nn.BCELoss()
 optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
 model.train()
+final_train_loss = 0.0
 for epoch in range(50):
     running_loss = 0.0
     for batch_x, batch_y in loader:
@@ -49,6 +50,8 @@ for epoch in range(50):
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
+    final_train_loss = running_loss/len(loader)
+    print(f'Epoch {epoch + 1:02d}/50 | BCE Loss: {final_train_loss:.4f}')
 
 print("Training Complete!")
 

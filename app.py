@@ -9,7 +9,6 @@ from torchvision import transforms
 from torchvision.models import efficientnet_b0, mobilenet_v2
 from transformer_recommender import SkinCareAttentionTransformer
 
-# Page Setup
 st.set_page_config(
     page_title="SkinSync | AI Diagnostic Portal",
     page_icon="✨",
@@ -17,10 +16,6 @@ st.set_page_config(
 )
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# ---------------------------------------------------------
-# 1. Vision & Product Knowledge Bases
-# ---------------------------------------------------------
 CLASSES = {
     "Skin Type": ['Dry_Skin', 'Normal_Skin', 'Oily_Skin'],
     "Acne": ['Acne', 'Normal/Other'],
@@ -41,10 +36,6 @@ transforms_dict = {
     "Skin Type": transforms.Compose([transforms.Resize((228, 228)), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
     "Standard": transforms.Compose([transforms.Resize((224, 224)), transforms.ToTensor(), transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 }
-
-# ---------------------------------------------------------
-# 2. Model & Artifact Loaders
-# ---------------------------------------------------------
 @st.cache_resource
 def load_vision_models():
     models = {}
@@ -95,9 +86,6 @@ try:
 except Exception as e:
     recommender, encoder, mlb = None, None, None
 
-# ---------------------------------------------------------
-# 3. Main UI Layout
-# ---------------------------------------------------------
 st.title("✨ SkinSync Interactive Diagnostic & Recommendation Portal")
 st.caption("Multi-Vision Scan + Custom Self-Attention Transformer Recommender")
 
@@ -133,9 +121,6 @@ if uploaded_file is not None:
             }
         st.session_state['results'] = results
 
-# ---------------------------------------------------------
-# 4. Step 1: Review Vision Results & Adjust Profile
-# ---------------------------------------------------------
 if st.session_state.get('scan_complete', False):
     st.write("---")
     st.subheader("Step 1: Review Vision Scan & Adjust Parameters")
@@ -175,9 +160,6 @@ if st.session_state.get('scan_complete', False):
         if results["Blackheads"]["confidence"] < confidence_threshold:
             st.warning(f"⚠️ Low confidence ({results['Blackheads']['confidence']:.1f}%)")
 
-    # ---------------------------------------------------------
-    # 5. Step 2: Questionnaire
-    # ---------------------------------------------------------
     st.write("---")
     st.subheader("Step 2: Additional Personalization & Constraints")
     
@@ -192,14 +174,10 @@ if st.session_state.get('scan_complete', False):
     all_ingredients = list(mlb.classes_) if mlb else ["Salicylic Acid", "Niacinamide", "Retinol"]
     allergies = st.multiselect("Select Ingredients to EXCLUDE (Allergies/Sensitivities):", options=all_ingredients)
 
-    # ---------------------------------------------------------
-    # 6. Step 3: Recommendation Engine Output
-    # ---------------------------------------------------------
     if st.button("🧪 Generate Customized Recommendations", use_container_width=True):
         st.write("---")
         st.subheader("Step 3: Transformer-Generated Recommendations")
         
-        # Primary concern selection logic
         if acne_choice:
             primary_concern = "Acne"
             internal_type = acne_type
@@ -216,7 +194,6 @@ if st.session_state.get('scan_complete', False):
         base_skin = st_choice.split()[0]
         subtype = "Normal to Dry" if "Dry" in base_skin else ("Normal to Oily" if "Oily" in base_skin else "Normal")
 
-        # Format input DataFrame matching training columns
         input_data = pd.DataFrame([{
             'Age_Group': age_group,
             'Skin_Type': base_skin,
@@ -226,7 +203,6 @@ if st.session_state.get('scan_complete', False):
             'Internal_Type': internal_type
         }])
         
-        # Encode features and run Transformer inference
         encoded_input = encoder.transform(input_data)
         input_tensor = torch.tensor(encoded_input, dtype=torch.float32).to(device)
         
@@ -242,14 +218,12 @@ if st.session_state.get('scan_complete', False):
         ranked.sort(key=lambda x: x[1], reverse=True)
         top_ingredients = ranked[:3]
 
-        # Display Ingredients
         st.markdown("### Top Active Ingredients (Transformer Attention Matches)")
         ing_cols = st.columns(len(top_ingredients))
         for i, (ing, affinity) in enumerate(top_ingredients):
             with ing_cols[i]:
                 st.metric(label=f"Active Key #{i+1}", value=ing, delta=f"{affinity:.1f}% Score")
 
-        # Match Products
         st.markdown("---")
         st.markdown("### Matched Products")
         target_names = [x[0] for x in top_ingredients]
