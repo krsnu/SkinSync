@@ -218,11 +218,13 @@ if st.session_state.get('scan_complete', False):
         ranked.sort(key=lambda x: x[1], reverse=True)
         top_ingredients = ranked[:3]
 
-        st.markdown("### Top Active Ingredients (Transformer Attention Matches)")
+        st.markdown("### Recommended Active Ingredients")
+
         ing_cols = st.columns(len(top_ingredients))
+
         for i, (ing, affinity) in enumerate(top_ingredients):
             with ing_cols[i]:
-                st.metric(label=f"Active Key #{i+1}", value=ing, delta=f"{affinity:.1f}% Score")
+                st.success(ing)
 
         st.markdown("---")
         st.markdown("### Matched Products")
