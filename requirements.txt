@@ -4,3 +4,9 @@ torchvision
 numpy
 pillow
 opencv-python-headless
+pandas
+opencv-python
+split-folders
+joblib
+scikit-learn
+matplotlib
